@@ -8,26 +8,29 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 unsigned char** matrixAlloc(int width, int height);
 void matrixDealloc(unsigned char **m, int width, int height);
-void printMatrix(unsigned char **m, int width, int height);
-void writePGM(unsigned char **m, int width, int height);
+void writePGM(unsigned char **m, char *filename, int width, int height);
 
 void calculateHalftoneCategories(unsigned char **m, int width, int height);
 unsigned char **buildHalftoneMatrix(unsigned char **m, int width, int height);
+char * makeOutputFileName(const char *filename);
 
 int main(int argc, const char * argv[])
 {
     //file to be read
     
-    FILE *file = fopen("child.pgm", "r");
+    FILE *file = fopen(argv[1], "r");
+    
+    printf("\n -> Abrindo arquivo: %s", argv[1]);
     
     if (file != NULL)
     {
         unsigned char buffer = 0;
         
-//        Consome cabeçalhos inuteis do arquivo pgm
+//        Consome cabecalhos inuteis do arquivo pgm
         
         while(getc(file) != '\n');
         while(getc(file) == '#');
@@ -38,18 +41,21 @@ int main(int argc, const char * argv[])
         int maxval = 0;
         
 //        Realiza leitura de metadados da imagem
-//        Como altura, largura e valor máximo de cor.
+//        Como altura, largura e valor maximo de cor.
         
         fscanf(file, "%d", &width);
         fscanf(file, "%d", &height);
         fscanf(file, "%d", &maxval);
         
-        printf("%d x %d\n", width, height);
+        printf("\n -> Reading PGM file.");
+        printf("\n --> width: %d height: %d", width, height);
+        printf("\n --> size: %lu", width * height * sizeof(unsigned char));
+        printf("\n");
         
 //        Contadores de linha e coluna
         int row, col;
         
-//        Alocação de de matriz de bytes da matriz
+//        Alocação de de matriz de bytes da imagem
         unsigned char **m = matrixAlloc(width, height);
         
         getc(file);
@@ -64,32 +70,77 @@ int main(int argc, const char * argv[])
             }
         }
         
-//        Cálculo do halftone 2x2
+//        Calculo das categorias do dithering 2x2
+        
+        printf("\n -> Calculando dithering 2x2\n");
         calculateHalftoneCategories(m, width, height);
         
-//        Create the halftone matrix
+//        Criar a matriz de dithering
         unsigned char **m2 = buildHalftoneMatrix(m, width, height);
         
-        printMatrix(m2, 2*width, 2*height);
+        char *filename = makeOutputFileName(argv[1]);
         
-//        Save it on a pgm file
-        writePGM(m2, 2*width, 2*height);
+//        Salva o arquivo no PGM
+
+        printf("\n -> Salvando resultado no arquivo: %s", filename);
+        printf("\n --> width: %d height: %d", 2 * width, 2 * height);
+        printf("\n --> size: %lu", 4 * width * height * sizeof(unsigned char));
+        printf("\n");
+
+        writePGM(m2, filename, 2*width, 2*height);
         
-//        Close open files and dealloc matrixes
+// 	 Fecha arquivos abertos e desaloca matrizes
         
         fclose(file);
         matrixDealloc(m, width, height);
         matrixDealloc(m2, 2*width, 2*height);
     }
+    else
+    {
+        printf("\n -> File %s not found...\n\n", argv[1]);
+    }
     
     return 0;
+}
+
+char * makeOutputFileName(const char *filename)
+{
+    char *original_filename = malloc(strlen(filename) * sizeof(char));
+    char *dot;
+    
+    
+//    Copia o arquivo passado como argumento para uma nova string
+    strcpy(original_filename, filename);
+    
+//    Trata o nome do arquivod
+    
+    dot = strstr(original_filename, ".");
+    *dot = '_';
+    
+    char *output_suffix = "_output.pgm";
+    char *output_filename = strcat(original_filename, output_suffix);
+    
+    free(original_filename);
+    
+    return output_filename;
 }
 
 void calculateHalftoneCategories(unsigned char **m, int width, int height)
 {
     unsigned char c;
     int row, col;
-    
+	
+//	 Calcula as categorias do dithering 2x2 dividindo o intervalo de
+//	 0..255 segundo a seguinte tabela.
+//
+//	 000..051: categoria 0
+//	 052..102: categoria 1
+//	 103..153: categoria 2
+// 	 154..204: categoria 3
+//	 205..255: categoria 4	
+//
+//
+
     for(row = 0; row < height; row++)
     {
         for (col = 0; col < width; col++)
@@ -132,6 +183,26 @@ void calculateHalftoneCategories(unsigned char **m, int width, int height)
 
 unsigned char **buildHalftoneMatrix(unsigned char **m, int width, int height)
 {
+
+//	 Esta funcao cria uma matriz de bytes para a construcao da imagem PGM de 
+//	 saida desde programa. Para tanto, essa funcao se serve da seguinte tabela:
+//	
+//	 Categoria 0: 	000 000
+// 					000 000
+//
+// 	 Categoria 1: 	128 000
+//					000 000
+//
+//	 Categoria 2: 	128 000
+//	 				000 128
+//
+// 	 Categoria 3: 	128 128
+//					000 128
+//
+//	 Categoria 4: 	128 128
+//	 				128 128
+//				
+
     int row, col;
     
     unsigned char **m2 = matrixAlloc(width*2, height*2);
@@ -189,25 +260,11 @@ unsigned char **buildHalftoneMatrix(unsigned char **m, int width, int height)
     
 }
 
-void printMatrix(unsigned char **m, int width, int height)
-{
-    int i, j;
-    
-    printf("\n");
-    
-    for (i = 0; i < height; i++)
-    {
-        for (j = 0; j < width; j++)
-        {
-            printf("%03u ", m[i][j]);
-        }
-        
-        printf("\n");
-    }
-}
-
 unsigned char** matrixAlloc(int width, int height)
 {
+
+//	 Esta funcao aloca uma matriz de tamanho width x height
+
     unsigned char **m = malloc(sizeof(unsigned char*) * height);
     
     if (m!= NULL)
@@ -225,6 +282,9 @@ unsigned char** matrixAlloc(int width, int height)
 
 void matrixDealloc(unsigned char **m, int width, int height)
 {
+// 	 Desaloca uma matriz dinamicamente alocada com malloc 
+//	 que possua tamanho width x height
+
     if(m != NULL)
     {
         int i = 0;
@@ -241,11 +301,21 @@ void matrixDealloc(unsigned char **m, int width, int height)
     }
 }
 
-void writePGM(unsigned char **m, int width, int height)
+void writePGM(unsigned char **m, char *filename, int width, int height)
 {
+
+// Escreve no disco um arquivo PGM a partir de uma dada matriz de bytes
+// Params: 
+// 	m: a matriz de bytes que representa o arquivo PGM
+//  filename: o nome do arquivo a ser escrito no disco
+//  width: largura da imagem PGM
+//  height: altura da imagem PGM
+//
+//
+
     int i, j;
     
-    FILE *file = fopen("child24.pgm", "w");
+    FILE *file = fopen(filename, "w");
     
     fprintf(file, "P5\n");
     fprintf(file, "%d %d\n", width, height);
@@ -260,4 +330,3 @@ void writePGM(unsigned char **m, int width, int height)
     fflush(file);
     fclose(file);
 }
-
