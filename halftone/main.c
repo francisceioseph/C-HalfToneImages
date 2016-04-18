@@ -2,7 +2,8 @@
 //  main.c
 //  halftone
 //
-//  Created by Francisco José A. C. Souza on 05/04/16.
+//  Created by Francisco José A. C. Souza
+//  Breno Ribeiro Monteiro on 05/04/16.
 //  Copyright © 2016 Francisco José A. C. Souza. All rights reserved.
 //
 
@@ -21,7 +22,7 @@ char * makeOutputFileName(const char *filename);
 int main(int argc, const char * argv[])
 {
     //file to be read
-    
+        
     FILE *file = fopen(argv[1], "r");
     
     printf("\n -> Abrindo arquivo: %s", argv[1]);
@@ -49,7 +50,7 @@ int main(int argc, const char * argv[])
         
         printf("\n -> Reading PGM file.");
         printf("\n --> width: %d height: %d", width, height);
-        printf("\n --> size: %lu", width * height * sizeof(unsigned char));
+        printf("\n --> size: %lu bytes", width * height * sizeof(unsigned char));
         printf("\n");
         
 //        Contadores de linha e coluna
@@ -71,7 +72,6 @@ int main(int argc, const char * argv[])
         }
         
 //        Calculo das categorias do dithering 2x2
-        
         printf("\n -> Calculando dithering 2x2\n");
         calculateHalftoneCategories(m, width, height);
         
@@ -84,7 +84,7 @@ int main(int argc, const char * argv[])
 
         printf("\n -> Salvando resultado no arquivo: %s", filename);
         printf("\n --> width: %d height: %d", 2 * width, 2 * height);
-        printf("\n --> size: %lu", 4 * width * height * sizeof(unsigned char));
+        printf("\n --> size: %lu bytes", 4 * width * height * sizeof(unsigned char));
         printf("\n");
 
         writePGM(m2, filename, 2*width, 2*height);
@@ -115,7 +115,7 @@ char * makeOutputFileName(const char *filename)
 //    Trata o nome do arquivod
     
     dot = strstr(original_filename, ".");
-    *dot = '_';
+    *dot = '\0';
     
     char *output_suffix = "_output.pgm";
     char *output_filename = strcat(original_filename, output_suffix);
